@@ -113,39 +113,52 @@ const fallbackFileReader = (file: File): Promise<{ inlineData: { data: string; m
 export const analyzePlantImage = async (imageFile: File): Promise<ScanResult> => {
     const imagePart = await fileToGenerativePart(imageFile);
 
-    // 1. First, attempt secure server-side API endpoint (works seamlessly in deployed Cloud Run and production)
-    try {
-        const response = await fetch('/api/analyze-plant', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                imageBase64: imagePart.inlineData.data,
-                mimeType: imagePart.inlineData.mimeType,
-            }),
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data && data.diseaseName) {
-                return data as ScanResult;
+    // 1. Attempt secure server-side API endpoint with automatic retry for transient reboots/disconnects
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const response = await fetch('/api/analyze-plant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imageBase64: imagePart.inlineData.data,
+                    mimeType: imagePart.inlineData.mimeType,
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.diseaseName) {
+                    return data as ScanResult;
+                }
             }
-        } else {
+
             const errData = await response.json().catch(() => null);
             if (errData?.error) {
                 throw new Error(errData.error);
             }
+
+            // If the server was momentarily restarting during compilation or dev reload, wait and retry once
+            if (attempt === 0 && (response.status === 404 || response.status >= 500)) {
+                await new Promise(r => setTimeout(r, 1200));
+                continue;
+            }
+
+            if (response.status === 404) {
+                throw new Error("Diagnosis server was momentarily reconnecting. Please click 'Analyze Plant' again.");
+            }
             throw new Error(`Server returned error ${response.status}`);
-        }
-    } catch (apiErr: any) {
-        // If it's a known error returned by the server (e.g. key leaked or invalid), throw directly to show user
-        if (apiErr?.message && !apiErr.message.includes('Failed to fetch') && !apiErr.message.includes('NetworkError')) {
+        } catch (apiErr: any) {
+            if (attempt === 0 && (apiErr.message?.includes('Failed to fetch') || apiErr.message?.includes('NetworkError') || apiErr.message?.includes('404'))) {
+                await new Promise(r => setTimeout(r, 1200));
+                continue;
+            }
             throw apiErr;
         }
-        console.warn('Server endpoint /api/analyze-plant not reachable, attempting direct client fallback:', apiErr);
     }
 
     // 2. Direct client-side SDK fallback
     if (!ai) {
-        throw new Error("Gemini AI client is not configured. Please paste your Gemini API key in server.ts (HARDCODED_GEMINI_API_KEY) or configure GEMINI_API_KEY.");
+        throw new Error("Diagnosis service is initializing. Please click 'Analyze Plant' again.");
     }
     
     const prompt = `Analyze this image of a plant leaf/stem/fruit. You are a world-class plant pathologist AI.

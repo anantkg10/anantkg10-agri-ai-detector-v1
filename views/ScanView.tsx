@@ -513,12 +513,23 @@ const ScanView: React.FC<ScanViewProps> = ({ setView }) => {
       </div>
 
       {error && (
-        <div className="w-full max-w-2xl mt-4 bg-red-950/40 border border-red-500/40 rounded-xl p-4 text-left flex items-start gap-3 backdrop-blur-sm">
-          <Icon name="warning" className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-semibold text-red-300">Diagnosis Notice</p>
-            <p className="text-red-200/90 mt-1 leading-relaxed">{error}</p>
+        <div className="w-full max-w-2xl mt-4 bg-red-950/40 border border-red-500/40 rounded-xl p-4 text-left flex items-start justify-between gap-3 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <Icon name="warning" className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold text-red-300">Diagnosis Notice</p>
+              <p className="text-red-200/90 mt-1 leading-relaxed">{error}</p>
+            </div>
           </div>
+          {imageFile && (
+            <button
+              onClick={handleAnalyze}
+              disabled={isLoading}
+              className="flex-shrink-0 px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 border border-red-400/50 text-red-100 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
       
