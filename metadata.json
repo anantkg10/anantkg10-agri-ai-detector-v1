@@ -1,0 +1,11 @@
+{
+  "name": "Agri-AI Plant Disease Detector",
+  "description": "A futuristic, AI-powered web application for detecting plant diseases. Features a holographic UI, 3D visuals, and provides instant diagnosis, treatment recommendations, and prevention tips to empower modern farmers.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
